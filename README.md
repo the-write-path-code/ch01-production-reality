@@ -1,176 +1,181 @@
 # Chapter 1: The Reality of Production Environments
 
-Companion code for Chapter 1 of *The Write Path*. This repo builds a
-small trail-safety assistant to demonstrate, with a real Gemini call,
-why a stateless language model's raw answer can never be trusted as a
-safety decision, and how a deterministic policy gate fixes that.
+Companion code for *Building Safe Agentic AI for Enterprise Systems* by Mohit Aggarwal.
 
-## What this repo demonstrates
+This repository uses a trail-safety assistant to show a production boundary: a language model may explain a decision, but it must not make the safety decision. The example contrasts a live Gemini response built from incomplete context with a deterministic policy gate that evaluates typed hazard evidence.
 
-| TOC section | Demonstrated by |
-|---|---|
-| 1.1 Why production systems have no undo button | `src/adapters/nps_adapter.py` -- `naive_parse` silently drops data with no error, no trace, no way to know it happened |
-| 1.2 The limits of stateless language models in enterprise settings | `src/services/llm_client.py::ask_raw_opinion` -- a real Gemini call, given the same incomplete context the naive pipeline would have produced |
-| 1.3 Understanding confident hallucinations under real-world stress | Demo 2 in `src/workflow.py` -- the live model answers the safety question directly and confidently, without seeing the zone-level hazard |
-| 1.4 Designing deterministic guardrails for irreversible systems | `src/policy/constraints.py::evaluate_trail_safety` -- accepts only typed, pre-validated evidence (a `bool` and a `List[str]`), never LLM free text. `tests/test_policy_isolation.py` proves this structurally via signature introspection |
+## What You Will Run
 
-## Why a real LLM call, not a mock
+The repository contains three short demonstrations:
 
-Section 1.3 is about a specific failure: a model answering **confidently**
-from **incomplete context**. A hand-written function that returns a
-canned wrong answer doesn't demonstrate that; it demonstrates a bug in
-an `if` statement. This repo calls Gemini for real, twice, for two
-structurally different jobs:
+1. A naive parser silently drops incomplete trail records.
+2. A live Gemini call gives an apparently reasonable answer from incomplete hazard context.
+3. A deterministic policy gate returns `SAFE`, `CAUTION`, or `FAIL_CLOSED` from typed evidence and never receives model-generated prose.
 
-1. **`ask_raw_opinion()` (the anti-pattern)** -- the model sees raw,
-   incomplete context (a nearby but irrelevant "Road Construction" alert;
-   the actual "Ice/Snow Warning" is never mentioned) and answers the
-   safety question directly. Its answer is printed for you to see, and
-   then thrown away. It is never passed into the policy gate.
-2. **`phrase_verdict()` (the safe pattern)** -- called only *after* the
-   deterministic policy gate has already decided `SAFE` / `CAUTION` /
-   `FAIL_CLOSED`. The model's only job here is to phrase an
-   already-final decision in natural language. It cannot change the
-   verdict.
+The Gemini wording can vary. The deterministic verdicts and test results should not.
 
-## Setup and run (uv)
+> **Production Warning**
+>
+> The Gemini response in this repository is deliberately untrusted demonstration output. It is shown so you can see how a reasonable answer can still be wrong when context is incomplete. Do not connect the raw response to an operational safety decision.
 
-This project uses [uv](https://docs.astral.sh/uv/) for dependency
-management. `uv run` resolves and installs dependencies from
-`pyproject.toml` automatically -- no manual venv or `pip install` step.
+## Chapter Map
 
-Install uv once, if you don't already have it:
+| Chapter section | Repository demonstration |
+| --- | --- |
+| 1.1, Why production systems have no undo button | `src/adapters/nps_adapter.py` shows how `naive_parse()` silently drops incomplete records while the safe parser retains and flags them. |
+| 1.2, The limits of stateless language models | `src/services/llm_client.py` sends incomplete context to a live model through `ask_raw_opinion()`. |
+| 1.3, Understanding confident hallucinations | Demo 2 in `src/workflow.py` shows that a model can reason plausibly from the evidence it received while missing the evidence that should govern the decision. |
+| 1.4, Designing deterministic guardrails | `src/policy/constraints.py` evaluates typed evidence and returns one of three fixed verdicts. It accepts no model-generated text. |
+
+## Why a Live Model Call?
+
+The second demonstration calls Gemini because the failure under discussion is not a hand-written program returning a canned wrong answer. A model receives incomplete context, reasons over it, and produces a plausible answer. That answer is printed so you can inspect it, then discarded. It is never supplied to the policy gate.
+
+The safe path works differently. The policy gate receives typed hazard evidence, decides the verdict, and only then allows the model to phrase the already-decided result for a user. The model can explain `CAUTION`; it cannot turn `CAUTION` into `SAFE`.
+
+## Prerequisites
+
+- Git
+- [uv](https://docs.astral.sh/uv/)
+- Python 3.10 or later. `uv` installs a compatible interpreter when needed.
+- A Gemini API key only if you want to run the optional live-model demonstration.
+
+No database, container runtime, or cloud account is required.
+
+## Quick Start
+
+### 1. Install uv
+
+Install uv once if it is not already available:
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-Get a free Gemini API key at
-[aistudio.google.com/apikey](https://aistudio.google.com/apikey):
+On Windows, install uv through PowerShell, `winget`, or another method listed in the [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/).
+
+### 2. Clone and synchronize the project
+
+```bash
+git clone https://github.com/the-write-path-code/ch01-production-reality.git
+cd ch01-production-reality
+uv sync
+```
+
+`uv sync` creates the project environment and installs the dependencies declared in `pyproject.toml`. Do not create or activate a virtual environment manually.
+
+### 3. Run the demonstrations
+
+```bash
+uv run python scripts/run_demo.py
+```
+
+Without a Gemini key, the repository still runs Demo 1 and Demo 3. Demo 2 is skipped with a clear message.
+
+### 4. Run the live Gemini demonstration, optional
+
+Copy the environment template:
 
 ```bash
 cp .env.example .env
-# edit .env and paste your key on the GEMINI_API_KEY= line
 ```
 
-Then run the demo:
+Set `GEMINI_API_KEY` in `.env`, then run the same command:
 
 ```bash
-uv run scripts/run_demo.py
+uv run python scripts/run_demo.py
 ```
 
-### Using a different model
+Get a Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey).
 
-By default this repo calls `gemini-2.5-flash`. To use a different Gemini
-model, set `GEMINI_MODEL` in `.env` -- no code changes needed:
+## Expected Results
 
-```bash
-GEMINI_MODEL=gemini-1.5-pro
-```
+### Demo 1: The Zion Vanishing Act
 
-`src/services/llm_client.py::_get_model_name()` reads this variable at
-call time and falls back to `gemini-2.5-flash` if it's unset. See
-`tests/test_llm_config.py` for the tests that pin this behavior down.
+The naive parser returns only three of six trail records because it drops records with incomplete geometry. The safe parser retains all six records and flags the three incomplete records for review.
 
-### Expected output
-
-Demos 1 and 3 are pure data-layer logic and produce identical output on
-every run. Demo 2 calls a live model, so **the model's exact wording will
-vary between runs** -- that variability is itself part of the lesson: a
-stateless model's raw answer is not a fact you can pin down or trust
-twice. What is guaranteed to be identical every time is the deterministic
-verdict (`CAUTION`), since it never depends on the model's text.
-
-Here is an actual run:
-
-```
-=== Demo 1: The Zion Vanishing Act (no undo button) ===
+```text
 Total trail records returned by NPS API: 6
-Records surviving the NAIVE parser:       3
-Records silently DROPPED by naive parser: 3
-Records surviving the SAFE parser:        6
-  -> FLAGGED (not dropped): 'Watchman Trail' has unparseable geometry
-  -> FLAGGED (not dropped): 'Canyon Overlook' has unparseable geometry
-  -> FLAGGED (not dropped): 'Riverside Walk' has unparseable geometry
-
-=== Demo 2: The Confident Hallucination (live Gemini call) ===
-LLM's raw opinion (UNTRUSTED -- never fed into the policy gate):
-  "The Watchman Trail is safe to hike today because the reported road
-  construction is located at a lower elevation than the trail."
-
-Naive code-only check (trail-scoped alerts only): safe=True
-Deterministic check (elevation-band alerts): safe=False, hazards=['Ice/Snow Warning']
-
-Policy gate verdict (computed from typed evidence only): CAUTION
-  - Active hazard(s) detected: Ice/Snow Warning.
-
-User-facing message (LLM narrates the ALREADY-DECIDED verdict):
-  "Hi there! Just a heads-up that we've issued a CAUTION verdict for the
-  Watchman Trail due to active ice and snow conditions. Please stay
-  safe out there!"
-
-=== Demo 3: Fail-Closed Policy on Incomplete Geometry ===
-'Angels Landing': verdict=SAFE, evidence_complete=True
-'The Narrows': verdict=SAFE, evidence_complete=True
-'Emerald Pools': verdict=SAFE, evidence_complete=True
-'Watchman Trail': verdict=FAIL_CLOSED, evidence_complete=False
-'Canyon Overlook': verdict=FAIL_CLOSED, evidence_complete=False
-'Riverside Walk': verdict=FAIL_CLOSED, evidence_complete=False
+Records surviving the naive parser: 3
+Records silently dropped by the naive parser: 3
+Records surviving the safe parser: 6
 ```
 
-Notice what the model actually did in Demo 2: it correctly reasoned
-that the road construction alert didn't apply, because that alert sits
-at a lower elevation than the trail. Then, having ruled out the one
-hazard it knew about, it confidently concluded the trail was safe. It
-was never told about the ice/snow warning, so it had no way to know
-otherwise. That is the failure section 1.2 and 1.3 describe: not a
-careless or lazy answer, but a well-reasoned one built on an incomplete
-picture. The policy gate below it never sees this reasoning at all --
-it only sees the hazard list, and returns `CAUTION` regardless of what
-the model concluded.
+The point is not that every incomplete record should be accepted. The point is that a production system must preserve the record and its failure state rather than make the record disappear.
 
-## Run the tests
+### Demo 2: A Confident Answer from Incomplete Context
+
+The live model receives a nearby road-construction alert but does not receive the relevant ice-and-snow warning. It may conclude that the trail is safe because the roadwork does not apply. That conclusion can be reasonable given the model's incomplete context and still be wrong.
+
+The deterministic check sees the full typed hazard list and returns:
+
+```text
+Policy gate verdict: CAUTION
+Reason: Active hazards detected: Ice/Snow Warning
+```
+
+The exact model response changes between calls. The policy verdict does not depend on the response.
+
+### Demo 3: Fail-Closed Treatment of Incomplete Evidence
+
+A trail with incomplete location evidence cannot become `SAFE`. The policy gate returns `FAIL_CLOSED` until it has enough validated evidence to decide.
+
+```text
+Watchman Trail: FAIL_CLOSED
+Canyon Overlook: FAIL_CLOSED
+Riverside Walk: FAIL_CLOSED
+```
+
+## Configure the Model, Optional
+
+The default model is `gemini-2.5-flash`. To override it for one command, set `GEMINI_MODEL` before the command:
+
+```bash
+GEMINI_MODEL=gemini-2.5-flash uv run python scripts/run_demo.py
+```
+
+You can also set `GEMINI_MODEL` in `.env`. The runtime reads the setting when the client is created and falls back to the default when it is absent.
+
+## Run the Tests
 
 ```bash
 uv run pytest -v
 ```
 
-Expected: **16 passed, 2 skipped** without a key set (or **18 passed**
-with `GEMINI_API_KEY` configured).
+Expected results:
 
-- `tests/test_models.py` -- Pydantic hazard-override and enum validation.
-- `tests/test_nps_adapter.py` -- the naive parser measurably drops
-  records; the safe parser never does.
-- `tests/test_policy_gate.py` -- the three verdict states in isolation.
-- `tests/test_fail_closed.py` -- end-to-end proof that a hazardous or
-  incomplete-evidence trail can never resolve to `SAFE`.
-- `tests/test_policy_isolation.py` -- **structural** proof (via
-  `inspect.signature`) that the policy gate has no parameter capable of
-  accepting LLM-generated free text, and that its output type is a
-  closed three-value enum, not an arbitrary string.
-- `tests/test_llm_config.py` -- proves `GEMINI_MODEL` is read live from
-  the environment and falls back to `gemini-2.5-flash` when unset.
-- `tests/test_llm_integration.py` -- live calls against the real Gemini
-  API. Automatically skipped when `GEMINI_API_KEY` is absent, so the
-  suite never fails for a reader who hasn't set up a key yet.
+- Without `GEMINI_API_KEY`: 16 tests pass and 2 live-integration tests are skipped.
+- With `GEMINI_API_KEY`: 18 tests pass.
 
-## Repo layout
+The test suite covers:
+
+- Pydantic validation for hazards and verdict values.
+- Silent record loss in the naive parser.
+- The three deterministic policy verdicts.
+- End-to-end proof that hazardous or incomplete evidence cannot produce `SAFE`.
+- Structural proof that the policy gate has no parameter capable of accepting model-generated free text.
+- Live environment-variable handling for the Gemini model configuration.
+- Optional live Gemini integration tests.
+
+## Repository Layout
 
 ```text
 .
 ├── README.md
-├── pyproject.toml              # uv/PEP 621 project + dependency definitions
+├── pyproject.toml
 ├── .env.example
+├── scripts/
+│   └── run_demo.py
 ├── src/
-│   ├── models.py                # Pydantic contracts + deterministic override
-│   ├── workflow.py               # The Orchestrator ("the Conductor")
+│   ├── models.py                 # Pydantic contracts and verdict types
+│   ├── workflow.py               # Demonstration orchestrator
 │   ├── adapters/
-│   │   ├── nps_adapter.py        # Demo 1: the Zion Vanishing Act
-│   │   └── weather_adapter.py    # Demo 2: hazard data (trail-scoped vs. zone-scoped)
+│   │   ├── nps_adapter.py        # Demo 1: parser comparison
+│   │   └── weather_adapter.py    # Demo 2: typed hazard evidence
 │   ├── policy/
-│   │   └── constraints.py        # Demo 3: the fail-closed policy gate
+│   │   └── constraints.py        # Demo 3: deterministic policy gate
 │   └── services/
-│       └── llm_client.py         # The ONLY module allowed to call Gemini
+│       └── llm_client.py         # The only module allowed to call Gemini
 ├── fixtures/
 │   ├── zion_raw_response.json
 │   └── watchman_weather_alert.json
@@ -182,10 +187,50 @@ with `GEMINI_API_KEY` configured).
 │   ├── test_policy_isolation.py
 │   ├── test_llm_config.py
 │   └── test_llm_integration.py
-├── workflow/                     # Mermaid diagrams for the chapter text
-│   ├── 01_high_level_architecture.md
-│   ├── 02_orchestrator_sequence.md
-│   └── 03_fail_closed_decision_flow.md
-└── scripts/
-    └── run_demo.py
+└── workflow/
+    ├── 01_high_level_architecture.md
+    ├── 02_orchestrator_sequence.md
+    └── 03_fail_closed_decision_flow.md
 ```
+
+## Architecture Diagrams
+
+The `workflow/` directory contains Mermaid diagrams used in Chapter 1:
+
+- `01_high_level_architecture.md` shows how the model opinion is separated from the decision path.
+- `02_orchestrator_sequence.md` shows why a plausible answer can still be unsafe when the model lacks relevant evidence.
+- `03_fail_closed_decision_flow.md` shows the three possible deterministic verdicts.
+
+GitHub renders these diagrams directly. You can also open them in VS Code or any Mermaid-compatible editor.
+
+## Troubleshooting
+
+### `uv` is not found
+
+Install uv, restart the terminal, and verify the installation:
+
+```bash
+uv --version
+```
+
+### The live model demonstration is skipped
+
+That is expected when `GEMINI_API_KEY` is absent. Demos 1 and 3 and the non-live test suite still run.
+
+### The Gemini request fails
+
+Confirm that `.env` exists, that `GEMINI_API_KEY` is set, and that the key has access to the configured Gemini model. The live demonstration is optional and does not alter the deterministic verdict path.
+
+### A policy test fails
+
+Do not change the policy verdict to make a test pass. Start with the typed hazard evidence and the policy-gate inputs. The point of the repository is that the decision path remains independent of the model response.
+
+## Related Chapters
+
+- Chapter 2 separates brittle monolithic agent loops into deterministic stages and stateful orchestration.
+- Chapters 3 through 5 build the grounding and evaluation controls needed before generation.
+- Chapter 14 extends the same principle into fail-closed action boundaries and human approval holds.
+
+## License and Errata
+
+See `LICENSE` for licensing terms. Report documentation or code issues through this repository's GitHub issue tracker.
