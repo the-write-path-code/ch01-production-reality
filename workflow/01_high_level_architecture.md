@@ -5,6 +5,7 @@ opinion is heard but never trusted; the actual decision comes from
 checking the real data.
 
 ```mermaid
+%%{init: {"theme": "neutral", "themeVariables": {"fontFamily": "Arial, Helvetica, sans-serif", "fontSize": "11px", "actorFontSize": "11px", "noteFontSize": "10px", "messageFontSize": "10px"}}}%%
 flowchart LR
     A["A hiker asks:<br/>'Is this trail safe?'"] --> B["The AI gives<br/>an opinion"]
     A --> C["The real data<br/>is checked"]
@@ -22,11 +23,4 @@ flowchart LR
     H --> I
     I --> J["Answer to the hiker"]
 
-    classDef setaside fill:#f8d7da,stroke:#842029,color:#111111
-    classDef opinion fill:#fff3cd,stroke:#997404,color:#111111
-    classDef final fill:#d1e7dd,stroke:#0f5132,color:#111111
-
-    class X setaside
-    class B opinion
-    class I final
 ```
