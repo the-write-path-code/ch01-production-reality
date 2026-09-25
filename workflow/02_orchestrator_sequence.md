@@ -6,6 +6,7 @@ reaches the wrong conclusion because it is missing a second, more
 important piece.
 
 ```mermaid
+%%{init: {"theme": "neutral", "themeVariables": {"fontFamily": "Arial, Helvetica, sans-serif", "fontSize": "11px", "actorFontSize": "11px", "noteFontSize": "10px", "messageFontSize": "10px"}}}%%
 sequenceDiagram
     participant Hiker
     participant AI as AI Model
