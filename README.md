@@ -2,7 +2,7 @@
 
 Companion code for *Building Safe Agentic AI for Enterprise Systems* by Mohit Aggarwal.
 
-This repository uses a trail-safety assistant to show a production boundary: a language model may explain a decision, but it must not make the safety decision. The example contrasts a live Gemini response built from incomplete context with a deterministic policy gate that evaluates typed hazard evidence.
+This repository uses a trail-safety assistant to show a production boundary: a language model may explain a decision, but it must not make the safety decision. The example contrasts a live Gemini response built from incomplete context with a deterministic policy gate that evaluates typed hazard evidence. You can also explore the chapter's [interactive workflow diagrams](#architecture-diagrams) directly in your browser.
 
 ## What You Will Run
 
@@ -189,19 +189,23 @@ The test suite covers:
 │   └── test_llm_integration.py
 └── workflow/
     ├── 01_high_level_architecture.md
+    ├── 01_high_level_architecture.html
     ├── 02_orchestrator_sequence.md
-    └── 03_fail_closed_decision_flow.md
+    ├── 02_orchestrator_sequence.html
+    ├── 03_fail_closed_decision_flow.md
+    └── 03_fail_closed_decision_flow.html
 ```
 
+<a id="architecture-diagrams"></a>
 ## Architecture Diagrams
 
-The `workflow/` directory contains Mermaid diagrams used in Chapter 1:
+The `workflow/` directory contains both interactive HTML diagrams and Mermaid Markdown files used in Chapter 1:
 
-- `01_high_level_architecture.md` shows how the model opinion is separated from the decision path.
-- `02_orchestrator_sequence.md` shows why a plausible answer can still be unsafe when the model lacks relevant evidence.
-- `03_fail_closed_decision_flow.md` shows the three possible deterministic verdicts.
+- [`01_high_level_architecture.html`](https://the-write-path-code.github.io/ch01-production-reality/workflow/01_high_level_architecture.html) ([`01_high_level_architecture.md`](workflow/01_high_level_architecture.md)) shows how the model opinion is separated from the decision path.
+- [`02_orchestrator_sequence.html`](https://the-write-path-code.github.io/ch01-production-reality/workflow/02_orchestrator_sequence.html) ([`02_orchestrator_sequence.md`](workflow/02_orchestrator_sequence.md)) shows why a plausible answer can still be unsafe when the model lacks relevant evidence.
+- [`03_fail_closed_decision_flow.html`](https://the-write-path-code.github.io/ch01-production-reality/workflow/03_fail_closed_decision_flow.html) ([`03_fail_closed_decision_flow.md`](workflow/03_fail_closed_decision_flow.md)) shows the three possible deterministic verdicts.
 
-GitHub renders these diagrams directly. You can also open them in VS Code or any Mermaid-compatible editor.
+The interactive `.html` files in `workflow/` can be opened directly in your browser using the links above (hosted via GitHub Pages with pan, zoom, dark/light theme, and animation support). GitHub also renders the `.md` Mermaid diagrams directly in the repository, and they can be opened in VS Code or any Mermaid-compatible editor.
 
 ## Troubleshooting
 
